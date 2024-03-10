@@ -31,6 +31,7 @@ load_dotenv()
 @click.option("--remain_rate", default=0.3, help="remain_rate")
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
+@click.option("--beta", default=0.01, help="Curvature influence strength.")
 def train_model(
     learning_rate,
     num_epochs,
@@ -39,13 +40,14 @@ def train_model(
     seeds,
     remain_rate,
     batch_size,
+    beta,
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
         save_dir = "./logs/CIFAR10/is_prune/{}/{}/{}".format(
-            "remain_rate_" + str(int(remain_rate * 100)),
+            "remain_rate_" + str(int(remain_rate * 100)) + "_w_hessian",
             "seed_" + str(int(seed)),
             current_date,
         )
@@ -97,7 +99,31 @@ def train_model(
                 # Backward and optimize
                 optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+                """
+                # 損失関数の曲率情報を活用した更新式の改良
+                for name, param in resnet_slth.named_parameters():
+                    if "score" in name:  # スコアパラメータのみ更新
+                        grad = param.grad.data
+                        
+                        # Hessianの対角成分を計算
+                        def loss_fn(x):
+                            return criterion(resnet_slth(images), labels)
+                        
+                        hessian = torch.autograd.functional.hessian(loss_fn, param.data)
+                        hessian_diag = torch.diag(hessian)
+                        
+                        param.data -= learning_rate * (grad + beta * hessian_diag)
+                """
+                for name, param in resnet_slth.named_parameters():
+                    if "score" in name:  # スコアパラメータのみ更新
+                        grad = param.grad.data
+                        hessian_diag_approx = (
+                            grad**2
+                        )  # 勾配の二乗でHessianの対角成分を近似
+                        param.data -= learning_rate * (
+                            grad + beta * hessian_diag_approx
+                        )
+                    #    param.data -= learning_rate * param.grad.data
 
                 epoch_losses.append(loss.item())
 

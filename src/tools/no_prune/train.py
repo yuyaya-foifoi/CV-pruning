@@ -12,7 +12,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.data.cifar.cifar10 import get_data_loaders
 from src.models.resnet.resnet import ResNet18
-from src.pruning.slth.edgepopup import modify_module_for_slth
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
 from src.utils.logger import setup_logger
@@ -28,48 +27,33 @@ load_dotenv()
     "--weight_decay", default=0.0001, help="Weight decay (L2 penalty)."
 )
 @click.option("--momentum", default=0.9, help="Momentum.")
-@click.option("--remain_rate", default=0.3, help="remain_rate")
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
 def train_model(
-    learning_rate,
-    num_epochs,
-    weight_decay,
-    momentum,
-    seeds,
-    remain_rate,
-    batch_size,
+    learning_rate, num_epochs, weight_decay, momentum, seeds, batch_size
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/CIFAR10/is_prune/{}/{}/{}".format(
-            "remain_rate_" + str(int(remain_rate * 100)),
+        save_dir = "./logs/CIFAR10/{}/{}/{}".format(
+            "no_prune",
             "seed_" + str(int(seed)),
             current_date,
         )
         os.makedirs(save_dir, exist_ok=True)
         logger = setup_logger(save_dir)
         logger.info("save_dir : {}".format(save_dir))
-        logger.info(
-            "the model will be pruned and remain rate is {}".format(
-                str(remain_rate * 100) + "%"
-            )
-        )
+        logger.info("the model will be NOT pruned")
 
         torch_fix_seed(seed)
         resnet = ResNet18().to(device)
-        resnet_slth = modify_module_for_slth(
-            resnet, remain_rate=remain_rate
-        ).to(device)
-        resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
         train_loader, test_loader = get_data_loaders(batch_size)
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
-            resnet_slth.parameters(),
+            resnet.parameters(),
             lr=learning_rate,
             momentum=momentum,
             weight_decay=weight_decay,
@@ -84,14 +68,14 @@ def train_model(
 
         total_step = len(train_loader)
         for epoch in range(num_epochs):
-            resnet_slth.train()
+            resnet.train()
             epoch_losses = []
             for i, (images, labels) in enumerate(train_loader):
                 images = images.to(device)
                 labels = labels.to(device)
 
                 # Forward pass
-                outputs = resnet_slth(images)
+                outputs = resnet(images)
                 loss = criterion(outputs, labels)
 
                 # Backward and optimize
@@ -124,14 +108,14 @@ def train_model(
                 )
             )
             # エポックごとにテストデータでモデルを評価
-            resnet_slth.eval()  # 評価モードに設定
+            resnet.eval()  # 評価モードに設定
             with torch.no_grad():
                 correct = 0
                 total = 0
                 for images, labels in test_loader:
                     images = images.to(device)
                     labels = labels.to(device)
-                    outputs = resnet_slth(images)
+                    outputs = resnet(images)
                     _, predicted = torch.max(outputs.data, 1)
                     total += labels.size(0)
                     correct += (predicted == labels).sum().item()
@@ -143,17 +127,6 @@ def train_model(
                         epoch + 1, num_epochs, acc
                     )
                 )
-
-            for name, param in resnet_slth.named_parameters():
-                if (
-                    "weight" in name
-                ):  # 'weight'を含む名前のパラメータのみチェック
-                    # 初期状態のモデルから同じ名前のパラメータを取得
-                    init_param = resnet_slth_init.state_dict()[name]
-                    # 現在のパラメータと初期パラメータを比較
-                    assert torch.equal(
-                        param.data, init_param
-                    ), f"Weight mismatch found in {name} after epoch {epoch+1}"
 
         df = pd.DataFrame(
             {
