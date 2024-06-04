@@ -7,6 +7,9 @@ style:
 activate: 
 	source ~/.bashrc
 
+activate_in_tmux:
+	source /home/fujisaki/Research/CV-pruning/.venv/bin/activate
+
 tmux_start:
 	tmux new-session -s train
 

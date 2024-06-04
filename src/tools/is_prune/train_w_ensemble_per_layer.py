@@ -10,9 +10,11 @@ import torch.optim as optim
 from dotenv import load_dotenv
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from src.data import get_data_loaders
+from src.data.cifar.cifar10 import get_data_loaders
 from src.models.resnet.resnet import ResNet18
-from src.pruning.slth.edgepopup import modify_module_for_slth
+from src.pruning.slth.edgepopup_ensemble_per_layer import (
+    modify_module_for_slth,
+)
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
 from src.utils.logger import setup_logger
@@ -22,55 +24,44 @@ load_dotenv()
 
 
 @click.command()
-@click.option("--learning_rate", default=0.01, help="Initial learning rate.")
+@click.option("--learning_rate", default=0.1, help="Initial learning rate.")
 @click.option("--num_epochs", default=100, help="Number of epochs to train.")
 @click.option(
     "--weight_decay", default=0.0001, help="Weight decay (L2 penalty)."
 )
-@click.option("--momentum", default=0.9, help="Momentum.")
 @click.option("--remain_rate", default=0.3, help="remain_rate")
+@click.option("--momentum", default=0.9, help="Momentum.")
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
-@click.option("--dataset_name", default="CIFAR10", help="name of dataset")
-@click.option("--n_class", default=10, help="number of cls")
 def train_model(
     learning_rate,
     num_epochs,
     weight_decay,
     momentum,
-    seeds,
     remain_rate,
+    seeds,
     batch_size,
-    dataset_name,
-    n_class
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/{}/is_prune/baseline/{}/{}/{}".format(
-            dataset_name,
-            "remain_rate_" + str(int(remain_rate * 100)),
+        save_dir = "./logs/CIFAR10/is_prune/{}/{}/{}".format(
+            "ensemble_per_layer",
             "seed_" + str(int(seed)),
             current_date,
         )
         os.makedirs(save_dir, exist_ok=True)
         logger = setup_logger(save_dir)
         logger.info("save_dir : {}".format(save_dir))
-        logger.info(
-            "the model will be pruned and remain rate is {}".format(
-                str(remain_rate * 100) + "%"
-            )
-        )
+        logger.info("2 scores will be set and those scores will be ensembled")
 
         torch_fix_seed(seed)
-        resnet = ResNet18(n_class).to(device)
-        resnet_slth = modify_module_for_slth(
-            resnet, remain_rate=remain_rate
-        ).to(device)
+        resnet = ResNet18().to(device)
+        resnet_slth = modify_module_for_slth(resnet, remain_rate).to(device)
         resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
-        train_loader, test_loader = get_data_loaders(dataset_name=dataset_name, batch_size=batch_size)
+        train_loader, test_loader = get_data_loaders(batch_size)
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -167,8 +158,17 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-        torch.save(resnet_slth.state_dict(), os.path.join(save_dir, "resnet_slth_state.pkl"))
+
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
+        torch.save(
+            resnet_slth.state_dict(),
+            os.path.join(save_dir, "trained_model_state_dict.pkl"),
+        )
+        torch.save(
+            resnet_slth_init.state_dict(),
+            os.path.join(save_dir, "init_model_state_dict.pkl"),
+        )
+
         send_email(
             os.environ.get("SENDER_ADDRESS"),
             os.environ.get("RECEIVER_ADDRESS"),

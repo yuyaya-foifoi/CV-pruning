@@ -10,19 +10,20 @@ import torch.optim as optim
 from dotenv import load_dotenv
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from src.data import get_data_loaders
+from src.data.cifar.cifar10 import get_data_loaders
 from src.models.resnet.resnet import ResNet18
-from src.pruning.slth.edgepopup import modify_module_for_slth
+from src.pruning.slth.edgepopup_auxiliary import modify_module_for_slth
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
 from src.utils.logger import setup_logger
 from src.utils.seed import torch_fix_seed
+from src.pruning.slth.edgepopup_auxiliary import SubnetConv, SubnetLinear
 
 load_dotenv()
 
 
 @click.command()
-@click.option("--learning_rate", default=0.01, help="Initial learning rate.")
+@click.option("--learning_rate", default=0.1, help="Initial learning rate.")
 @click.option("--num_epochs", default=100, help="Number of epochs to train.")
 @click.option(
     "--weight_decay", default=0.0001, help="Weight decay (L2 penalty)."
@@ -31,8 +32,6 @@ load_dotenv()
 @click.option("--remain_rate", default=0.3, help="remain_rate")
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
-@click.option("--dataset_name", default="CIFAR10", help="name of dataset")
-@click.option("--n_class", default=10, help="number of cls")
 def train_model(
     learning_rate,
     num_epochs,
@@ -41,15 +40,13 @@ def train_model(
     seeds,
     remain_rate,
     batch_size,
-    dataset_name,
-    n_class
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/{}/is_prune/baseline/{}/{}/{}".format(
-            dataset_name,
+        save_dir = "./logs/CIFAR10/is_prune/{}/{}/{}/{}".format(
+            "auxiliary",
             "remain_rate_" + str(int(remain_rate * 100)),
             "seed_" + str(int(seed)),
             current_date,
@@ -64,13 +61,13 @@ def train_model(
         )
 
         torch_fix_seed(seed)
-        resnet = ResNet18(n_class).to(device)
+        resnet = ResNet18().to(device)
         resnet_slth = modify_module_for_slth(
             resnet, remain_rate=remain_rate
         ).to(device)
         resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
-        train_loader, test_loader = get_data_loaders(dataset_name=dataset_name, batch_size=batch_size)
+        train_loader, test_loader = get_data_loaders(batch_size)
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -116,6 +113,12 @@ def train_model(
                             loss.item(),
                         )
                     )
+            for module in resnet_slth.modules():
+                if isinstance(module, SubnetLinear):
+                    module.set_current_epoch(epoch)
+                if isinstance(module, SubnetConv):
+                    module.set_current_epoch(epoch)
+                
 
             # 学習率の更新
             scheduler.step()
@@ -167,7 +170,7 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-        torch.save(resnet_slth.state_dict(), os.path.join(save_dir, "resnet_slth_state.pkl"))
+
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
         send_email(
             os.environ.get("SENDER_ADDRESS"),

@@ -69,7 +69,7 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(self.z_dim, num_classes)
     """
 
-    def __init__(self, block, num_blocks):
+    def __init__(self, block, num_blocks, n_cls=10):
         super(ResNet, self).__init__()
         self.in_channels = 64
         self.z_dim = 512
@@ -82,7 +82,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         # self.avgpool = nn.AdaptiveAvgPool2d(1)
 
-        self.fc = conv1x1(512 * block.expansion, 10)
+        self.fc = conv1x1(512 * block.expansion, n_cls)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
@@ -133,8 +133,8 @@ class Bottleneck(nn.Module):
         return out
 
 
-def ResNet18():
-    return ResNet(BasicBlock, [2, 2, 2, 2])
+def ResNet18(n_cls: int = 10):
+    return ResNet(BasicBlock, [2, 2, 2, 2], n_cls)
 
 
 def ResNet34():

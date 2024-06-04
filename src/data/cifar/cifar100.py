@@ -3,7 +3,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 
-def get_cifar10_data_loaders(batch_size):
+def get_cifar100_data_loaders(batch_size):
     transform_train = transforms.Compose(
         [
             transforms.Pad(4),
@@ -20,14 +20,14 @@ def get_cifar10_data_loaders(batch_size):
     )
 
     # CIFAR-10 dataset
-    train_dataset = torchvision.datasets.CIFAR10(
+    train_dataset = torchvision.datasets.CIFAR100(
         root="./datasets",
         train=True,
         transform=transform_train,
         download=True,
     )
 
-    test_dataset = torchvision.datasets.CIFAR10(
+    test_dataset = torchvision.datasets.CIFAR100(
         root="./datasets", train=False, transform=transform_test
     )
 

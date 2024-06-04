@@ -2,13 +2,13 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-
-def get_cifar10_data_loaders(batch_size):
+def get_fashionmnist_data_loaders(batch_size):
+    # FashionMNISTの寸法と特徴に合わせて変換を調整
     transform_train = transforms.Compose(
         [
-            transforms.Pad(4),
+            transforms.Pad(2),  # 画像サイズに合わせてパディングを変更
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32),
+            transforms.RandomCrop(28),  # FashionMNIST用にクロップサイズを調整
             transforms.ToTensor(),
         ]
     )
@@ -19,19 +19,19 @@ def get_cifar10_data_loaders(batch_size):
         ]
     )
 
-    # CIFAR-10 dataset
-    train_dataset = torchvision.datasets.CIFAR10(
+    # FashionMNISTデータセット
+    train_dataset = torchvision.datasets.FashionMNIST(
         root="./datasets",
         train=True,
         transform=transform_train,
         download=True,
     )
 
-    test_dataset = torchvision.datasets.CIFAR10(
+    test_dataset = torchvision.datasets.FashionMNIST(
         root="./datasets", train=False, transform=transform_test
     )
 
-    # Data loaders
+    # データローダー
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=True
     )

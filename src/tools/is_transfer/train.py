@@ -22,7 +22,7 @@ load_dotenv()
 
 
 @click.command()
-@click.option("--learning_rate", default=0.01, help="Initial learning rate.")
+@click.option("--learning_rate", default=0.1, help="Initial learning rate.")
 @click.option("--num_epochs", default=100, help="Number of epochs to train.")
 @click.option(
     "--weight_decay", default=0.0001, help="Weight decay (L2 penalty)."
@@ -32,7 +32,8 @@ load_dotenv()
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
 @click.option("--dataset_name", default="CIFAR10", help="name of dataset")
-@click.option("--n_class", default=10, help="number of cls")
+@click.option("--source_path", help="trained_model")
+
 def train_model(
     learning_rate,
     num_epochs,
@@ -42,13 +43,13 @@ def train_model(
     remain_rate,
     batch_size,
     dataset_name,
-    n_class
+    source_path
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/{}/is_prune/baseline/{}/{}/{}".format(
+        save_dir = "./logs/{}/is_transfer/{}/{}/{}".format(
             dataset_name,
             "remain_rate_" + str(int(remain_rate * 100)),
             "seed_" + str(int(seed)),
@@ -64,10 +65,16 @@ def train_model(
         )
 
         torch_fix_seed(seed)
-        resnet = ResNet18(n_class).to(device)
+        resnet = ResNet18(100).to(device)
         resnet_slth = modify_module_for_slth(
             resnet, remain_rate=remain_rate
         ).to(device)
+
+        source_weight = torch.load(source_path.format(str(seed)))
+        source_weight["fc.weight"] = resnet_slth.state_dict()["fc.weight"]
+        source_weight["fc.scores"] = resnet_slth.state_dict()["fc.scores"]
+
+        resnet_slth.load_state_dict(source_weight)
         resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
         train_loader, test_loader = get_data_loaders(dataset_name=dataset_name, batch_size=batch_size)

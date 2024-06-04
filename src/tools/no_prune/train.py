@@ -135,7 +135,7 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-
+        torch.save(resnet.state_dict(), os.path.join(save_dir, "model_state.pkl"))
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
         send_email(
             os.environ.get("SENDER_ADDRESS"),
