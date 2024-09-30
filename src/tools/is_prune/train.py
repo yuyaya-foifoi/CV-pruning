@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.data import get_data_loaders
-from src.models.resnet.resnet import ResNet18
+from src.models.resnet import get_resnet
 from src.pruning.slth.edgepopup import modify_module_for_slth
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
@@ -33,6 +33,8 @@ load_dotenv()
 @click.option("--batch_size", default=128, help="Batch size for training.")
 @click.option("--dataset_name", default="CIFAR10", help="name of dataset")
 @click.option("--n_class", default=10, help="number of cls")
+@click.option("--dir_name", help="name of dir")
+@click.option("--resnet_name", default="ResNet18", help="name of resnet")
 def train_model(
     learning_rate,
     num_epochs,
@@ -42,14 +44,18 @@ def train_model(
     remain_rate,
     batch_size,
     dataset_name,
-    n_class
+    n_class,
+    dir_name,
+    resnet_name
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/{}/is_prune/baseline/{}/{}/{}".format(
+        save_dir = "./logs/{}/is_prune/baseline/{}/{}/{}/{}/{}".format(
             dataset_name,
+            resnet_name,
+            dir_name,
             "remain_rate_" + str(int(remain_rate * 100)),
             "seed_" + str(int(seed)),
             current_date,
@@ -64,13 +70,15 @@ def train_model(
         )
 
         torch_fix_seed(seed)
-        resnet = ResNet18(n_class).to(device)
+        resnet = get_resnet(resnet_name, n_class).to(device)
         resnet_slth = modify_module_for_slth(
             resnet, remain_rate=remain_rate
         ).to(device)
         resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
-        train_loader, test_loader = get_data_loaders(dataset_name=dataset_name, batch_size=batch_size)
+        train_loader, test_loader = get_data_loaders(
+            dataset_name=dataset_name, batch_size=batch_size
+        )
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -167,7 +175,10 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-        torch.save(resnet_slth.state_dict(), os.path.join(save_dir, "resnet_slth_state.pkl"))
+        torch.save(
+            resnet_slth.state_dict(),
+            os.path.join(save_dir, "resnet_slth_state.pkl"),
+        )
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
         send_email(
             os.environ.get("SENDER_ADDRESS"),

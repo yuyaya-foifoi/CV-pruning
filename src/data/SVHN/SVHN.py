@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+
 def get_svhn_data_loaders(batch_size):
     transform_train = transforms.Compose(
         [
@@ -21,14 +22,14 @@ def get_svhn_data_loaders(batch_size):
     # SVHN dataset
     train_dataset = torchvision.datasets.SVHN(
         root="./datasets",
-        split='train',  # 'train' for the training data
+        split="train",  # 'train' for the training data
         transform=transform_train,
         download=True,
     )
 
     test_dataset = torchvision.datasets.SVHN(
-        root="./datasets", 
-        split='test',  # 'test' for the test data
+        root="./datasets",
+        split="test",  # 'test' for the test data
         transform=transform_test,
         download=True,
     )

@@ -10,7 +10,7 @@ import torch.optim as optim
 from dotenv import load_dotenv
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from src.data.cifar.cifar10 import get_data_loaders
+from src.data import get_data_loaders
 from src.models.resnet.resnet import ResNet18
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
@@ -27,17 +27,20 @@ load_dotenv()
     "--weight_decay", default=0.0001, help="Weight decay (L2 penalty)."
 )
 @click.option("--momentum", default=0.9, help="Momentum.")
+@click.option("--dataset_name", default="CIFAR10", help="name of dataset")
 @click.option("--seeds", default=5, help="Number of seeds")
 @click.option("--batch_size", default=128, help="Batch size for training.")
+@click.option("--dir_name", help="name of dir")
 def train_model(
-    learning_rate, num_epochs, weight_decay, momentum, seeds, batch_size
+    learning_rate, num_epochs, weight_decay, momentum, seeds, batch_size, dir_name, dataset_name
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/CIFAR10/{}/{}/{}".format(
+        save_dir = "./logs/CIFAR10/{}/{}/{}/{}".format(
             "no_prune",
+            dir_name, 
             "seed_" + str(int(seed)),
             current_date,
         )
@@ -49,7 +52,9 @@ def train_model(
         torch_fix_seed(seed)
         resnet = ResNet18().to(device)
 
-        train_loader, test_loader = get_data_loaders(batch_size)
+        train_loader, test_loader = get_data_loaders(
+            dataset_name=dataset_name, batch_size=batch_size
+        )
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -135,7 +140,9 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-        torch.save(resnet.state_dict(), os.path.join(save_dir, "model_state.pkl"))
+        torch.save(
+            resnet.state_dict(), os.path.join(save_dir, "model_state.pkl")
+        )
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
         send_email(
             os.environ.get("SENDER_ADDRESS"),

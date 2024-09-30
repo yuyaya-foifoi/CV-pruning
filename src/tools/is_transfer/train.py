@@ -30,10 +30,12 @@ load_dotenv()
 @click.option("--momentum", default=0.9, help="Momentum.")
 @click.option("--remain_rate", default=0.3, help="remain_rate")
 @click.option("--seeds", default=5, help="Number of seeds")
+@click.option("--n_cls", default=10, help="Number of cls")
 @click.option("--batch_size", default=128, help="Batch size for training.")
 @click.option("--dataset_name", default="CIFAR10", help="name of dataset")
+@click.option("--source_dataset_name", help="name of dataset")
 @click.option("--source_path", help="trained_model")
-
+@click.option("--dir_name", help="dir_name")
 def train_model(
     learning_rate,
     num_epochs,
@@ -43,14 +45,19 @@ def train_model(
     remain_rate,
     batch_size,
     dataset_name,
-    source_path
+    source_dataset_name,
+    source_path,
+    n_cls,
+    dir_name
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     current_date = get_current_datetime_for_path()
     for seed in np.arange(seeds):
-        save_dir = "./logs/{}/is_transfer/{}/{}/{}".format(
+        save_dir = "./logs/{}_from_{}/is_transfer/{}/{}/{}/{}".format(
             dataset_name,
+            source_dataset_name,
+            dir_name,
             "remain_rate_" + str(int(remain_rate * 100)),
             "seed_" + str(int(seed)),
             current_date,
@@ -65,19 +72,25 @@ def train_model(
         )
 
         torch_fix_seed(seed)
-        resnet = ResNet18(100).to(device)
+        resnet = ResNet18(n_cls).to(device)
         resnet_slth = modify_module_for_slth(
             resnet, remain_rate=remain_rate
         ).to(device)
 
         source_weight = torch.load(source_path.format(str(seed)))
-        source_weight["fc.weight"] = resnet_slth.state_dict()["fc.weight"]
-        source_weight["fc.scores"] = resnet_slth.state_dict()["fc.scores"]
+        current_state_dict = resnet_slth.state_dict()
+    
+        # fc.weight と fc.scores を除く重みを source_weight からコピー
+        for name, param in source_weight.items():
+            if name not in ["fc.weight", "fc.scores"]:
+                current_state_dict[name] = param
 
-        resnet_slth.load_state_dict(source_weight)
+        resnet_slth.load_state_dict(current_state_dict)
         resnet_slth_init = copy.deepcopy(resnet_slth).to(device)
 
-        train_loader, test_loader = get_data_loaders(dataset_name=dataset_name, batch_size=batch_size)
+        train_loader, test_loader = get_data_loaders(
+            dataset_name=dataset_name, batch_size=batch_size
+        )
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -174,7 +187,10 @@ def train_model(
                 "Validation Accuracy": val_accuracies,
             }
         )
-        torch.save(resnet_slth.state_dict(), os.path.join(save_dir, "resnet_slth_state.pkl"))
+        torch.save(
+            resnet_slth.state_dict(),
+            os.path.join(save_dir, "resnet_slth_state.pkl"),
+        )
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
         send_email(
             os.environ.get("SENDER_ADDRESS"),

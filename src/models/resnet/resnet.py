@@ -137,17 +137,17 @@ def ResNet18(n_cls: int = 10):
     return ResNet(BasicBlock, [2, 2, 2, 2], n_cls)
 
 
-def ResNet34():
-    return ResNet(BasicBlock, [3, 4, 6, 3])
+def ResNet34(n_cls: int = 10):
+    return ResNet(BasicBlock, [3, 4, 6, 3], n_cls)
 
 
-def ResNet50():
-    return ResNet(Bottleneck, [3, 4, 6, 3])
+def ResNet50(n_cls: int = 10):
+    return ResNet(Bottleneck, [3, 4, 6, 3], n_cls)
 
 
-def ResNet101():
-    return ResNet(Bottleneck, [3, 4, 23, 3])
+def ResNet101(n_cls: int = 10):
+    return ResNet(Bottleneck, [3, 4, 23, 3], n_cls)
 
 
-def ResNet152():
-    return ResNet(Bottleneck, [3, 8, 36, 3])
+def ResNet152(n_cls: int = 10):
+    return ResNet(Bottleneck, [3, 8, 36, 3], n_cls)

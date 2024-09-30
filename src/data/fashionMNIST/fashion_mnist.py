@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+
 def get_fashionmnist_data_loaders(batch_size):
     # FashionMNISTの寸法と特徴に合わせて変換を調整
     transform_train = transforms.Compose(

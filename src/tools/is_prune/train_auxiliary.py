@@ -12,12 +12,15 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.data.cifar.cifar10 import get_data_loaders
 from src.models.resnet.resnet import ResNet18
-from src.pruning.slth.edgepopup_auxiliary import modify_module_for_slth
+from src.pruning.slth.edgepopup_auxiliary import (
+    SubnetConv,
+    SubnetLinear,
+    modify_module_for_slth,
+)
 from src.utils.date import get_current_datetime_for_path
 from src.utils.email import send_email
 from src.utils.logger import setup_logger
 from src.utils.seed import torch_fix_seed
-from src.pruning.slth.edgepopup_auxiliary import SubnetConv, SubnetLinear
 
 load_dotenv()
 
@@ -118,7 +121,6 @@ def train_model(
                     module.set_current_epoch(epoch)
                 if isinstance(module, SubnetConv):
                     module.set_current_epoch(epoch)
-                
 
             # 学習率の更新
             scheduler.step()

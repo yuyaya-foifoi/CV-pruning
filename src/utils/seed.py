@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 
-def torch_fix_seed(seed=42):
+def torch_fix_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

@@ -80,7 +80,6 @@ def train_model(
         ).to(device)
         resnet_slth_init = copy.deepcopy(resnet_slth1).to(device)
 
-
         train_loader, test_loader = get_data_loaders(batch_size)
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
@@ -129,7 +128,6 @@ def train_model(
         scheduler5 = CosineAnnealingLR(optimizer5, T_max=num_epochs)
         scheduler6 = CosineAnnealingLR(optimizer6, T_max=num_epochs)
 
-
         # Train the model
         losses = []
         val_accuracies = []
@@ -142,7 +140,6 @@ def train_model(
             resnet_slth4.train()
             resnet_slth5.train()
             resnet_slth6.train()
-
 
             epoch_losses = []
             for i, (images, labels) in enumerate(train_loader):
@@ -157,14 +154,12 @@ def train_model(
                 outputs5 = resnet_slth5(images)
                 outputs6 = resnet_slth6(images)
 
-
                 loss1 = criterion(outputs1, labels)
                 loss2 = criterion(outputs2, labels)
                 loss3 = criterion(outputs3, labels)
                 loss4 = criterion(outputs4, labels)
                 loss5 = criterion(outputs5, labels)
                 loss6 = criterion(outputs6, labels)
-
 
                 # Backward and optimize
                 optimizer1.zero_grad()
@@ -192,7 +187,12 @@ def train_model(
                 optimizer6.step()
 
                 total_loss = (
-                    loss1.item() + loss2.item() + loss3.item() + loss4.item()+ loss5.item()+ loss6.item()
+                    loss1.item()
+                    + loss2.item()
+                    + loss3.item()
+                    + loss4.item()
+                    + loss5.item()
+                    + loss6.item()
                 )
                 epoch_losses.append(total_loss)
 
@@ -214,7 +214,6 @@ def train_model(
             scheduler4.step()
             scheduler5.step()
             scheduler6.step()
-
 
             epoch_loss = sum(epoch_losses) / len(epoch_losses)
             losses.append(epoch_loss)
@@ -247,7 +246,12 @@ def train_model(
                     outputs6 = resnet_slth6(images)
 
                     ensemble_outputs = (
-                        outputs1 + outputs2 + outputs3 + outputs4+ outputs5+ outputs6
+                        outputs1
+                        + outputs2
+                        + outputs3
+                        + outputs4
+                        + outputs5
+                        + outputs6
                     ) / 6
                     _, predicted = torch.max(ensemble_outputs.data, 1)
                     total += labels.size(0)
@@ -267,7 +271,6 @@ def train_model(
                 resnet_slth4,
                 resnet_slth5,
                 resnet_slth6,
-
             ]:
                 for name, param in resnet_slth.named_parameters():
                     if (
@@ -289,12 +292,30 @@ def train_model(
         )
 
         df.to_csv(os.path.join(save_dir, "training_results.csv"), index=False)
-        torch.save(resnet_slth1.state_dict(), os.path.join(save_dir, "resnet_slth1_state.pkl"))
-        torch.save(resnet_slth2.state_dict(), os.path.join(save_dir, "resnet_slth2_state.pkl"))
-        torch.save(resnet_slth3.state_dict(), os.path.join(save_dir, "resnet_slth3_state.pkl"))
-        torch.save(resnet_slth4.state_dict(), os.path.join(save_dir, "resnet_slth4_state.pkl"))
-        torch.save(resnet_slth5.state_dict(), os.path.join(save_dir, "resnet_slth5_state.pkl"))
-        torch.save(resnet_slth6.state_dict(), os.path.join(save_dir, "resnet_slth6_state.pkl"))
+        torch.save(
+            resnet_slth1.state_dict(),
+            os.path.join(save_dir, "resnet_slth1_state.pkl"),
+        )
+        torch.save(
+            resnet_slth2.state_dict(),
+            os.path.join(save_dir, "resnet_slth2_state.pkl"),
+        )
+        torch.save(
+            resnet_slth3.state_dict(),
+            os.path.join(save_dir, "resnet_slth3_state.pkl"),
+        )
+        torch.save(
+            resnet_slth4.state_dict(),
+            os.path.join(save_dir, "resnet_slth4_state.pkl"),
+        )
+        torch.save(
+            resnet_slth5.state_dict(),
+            os.path.join(save_dir, "resnet_slth5_state.pkl"),
+        )
+        torch.save(
+            resnet_slth6.state_dict(),
+            os.path.join(save_dir, "resnet_slth6_state.pkl"),
+        )
 
         send_email(
             os.environ.get("SENDER_ADDRESS"),

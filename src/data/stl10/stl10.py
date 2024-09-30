@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+
 def get_stl10_data_loaders(batch_size):
     """
     transform_train = transforms.Compose([
@@ -47,14 +48,14 @@ def get_stl10_data_loaders(batch_size):
 
     # データローダー
     train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, 
-        batch_size=batch_size, 
+        dataset=train_dataset,
+        batch_size=batch_size,
         shuffle=True,
     )
 
     test_loader = torch.utils.data.DataLoader(
-        dataset=test_dataset, 
-        batch_size=batch_size, 
+        dataset=test_dataset,
+        batch_size=batch_size,
         shuffle=False,
     )
 

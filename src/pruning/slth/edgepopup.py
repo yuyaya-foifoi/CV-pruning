@@ -88,6 +88,7 @@ class SubnetConv(nn.Conv2d):
 
         self.scores = nn.Parameter(torch.Tensor(self.weight.size()))
         nn.init.kaiming_uniform_(self.scores, a=math.sqrt(5))
+        # https://github.com/allenai/hidden-networks/blob/dddf2d093de568fc76d460a77fa2650e56e79c1a/utils/conv_type.py#L41
         self.weight.requires_grad = False
         self.abs_score = True
         self.subnet_func = GetSubnet
@@ -157,13 +158,15 @@ def recursive_setattr(obj, name, value):
         setattr(obj, name, value)
 
 
-def modify_module_for_slth(net, remain_rate, init_mode=None):
+def modify_module_for_slth(net, remain_rate, init_mode=None, is_print=True):
     net_cp = copy.deepcopy(net)
     named_modules = [(n, m) for n, m in net_cp.named_modules()]
-    print("#Modules: {}".format(len(named_modules)))
+    if is_print:
+        print("#Modules: {}".format(len(named_modules)))
     for n, m in named_modules:
         if isinstance(m, nn.Conv2d):
-            print("Replace nn.Conv2d with SubnetConv: {}".format(n))
+            if is_print:
+                print("Replace nn.Conv2d with SubnetConv: {}".format(n))
             m2 = SubnetConv(
                 m.in_channels,
                 m.out_channels,
@@ -180,7 +183,8 @@ def modify_module_for_slth(net, remain_rate, init_mode=None):
             recursive_setattr(net_cp, n, m2)
         # you can write other SLTH modules here
         elif isinstance(m, nn.Linear):
-            print("Replace nn.Linear with SubnetLinear: {}".format(n))
+            if is_print:
+                print("Replace nn.Linear with SubnetLinear: {}".format(n))
             m2 = SubnetLinear(m.in_features, m.out_features, bias=False)
             # memo 2023/09/07
             # 重みをloadしてSubnetLinearを適用した時点では重みはランダムになっている
@@ -190,21 +194,24 @@ def modify_module_for_slth(net, remain_rate, init_mode=None):
             m2.init_weight(init_mode)
             recursive_setattr(net_cp, n, m2)
         elif isinstance(m, nn.BatchNorm1d):
-            print(
-                "Replace nn.BatchNorm1d with NonAffineBatchNorm1d: {}".format(
-                    n
+            if is_print:
+                print(
+                    "Replace nn.BatchNorm1d with NonAffineBatchNorm1d: {}".format(
+                        n
+                    )
                 )
-            )
             m2 = NonAffineBatchNorm1d(dim=m.num_features)
             recursive_setattr(net_cp, n, m2)
         elif isinstance(m, nn.BatchNorm2d):
-            print(
-                "Replace nn.BatchNorm2d with NonAffineBatchNorm2d: {}".format(
-                    n
+            if is_print:
+                print(
+                    "Replace nn.BatchNorm2d with NonAffineBatchNorm2d: {}".format(
+                        n
+                    )
                 )
-            )
             m2 = NonAffineBatchNorm2d(dim=m.num_features)
             recursive_setattr(net_cp, n, m2)
         else:
-            print("No modification", n, type(m))
+            if is_print:
+                print("No modification", n, type(m))
     return net_cp

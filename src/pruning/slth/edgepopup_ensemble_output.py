@@ -55,16 +55,20 @@ class SubnetLinear(nn.Linear):
     def init_scores(self, mode="kaiming_uniform"):
         if mode == "kaiming_uniform":
             nn.init.kaiming_uniform_(self.scores, a=math.sqrt(5))
+        elif mode == "kaiming_uniform_wide":
+            nn.init.kaiming_uniform_(self.scores, a=math.sqrt(3))
+        elif mode == "kaiming_uniform_narrow":
+            nn.init.kaiming_uniform_(self.scores, a=math.sqrt(10))
         elif mode == "kaiming_normal":
-            nn.init.kaiming_normal_(self.scores)
+            nn.init.kaiming_normal_(self.scores, a=math.sqrt(5))
         elif mode == "xavier_uniform":
-            nn.init.xavier_uniform_(self.scores)
+            nn.init.xavier_uniform_(self.scores, gain=0.25)
         elif mode == "xavier_normal":
-            nn.init.xavier_normal_(self.scores)
+            nn.init.xavier_normal_(self.scores, gain=0.25)
         elif mode == "uniform":
-            nn.init.uniform_(self.scores, a=-1, b=1)
+            nn.init.uniform_(self.scores, a=-0.1, b=0.1)
         elif mode == "normal":
-            nn.init.normal_(self.scores)
+            nn.init.normal_(self.scores, std=0.05)
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
 
@@ -86,6 +90,28 @@ class SubnetLinear(nn.Linear):
             gain = nn.init.calculate_gain("relu")
             std = gain / math.sqrt(fan)
             weight.data = weight.data.sign() * std
+
+        elif name == "kaiming_normal":
+            nn.init.kaiming_uniform_(
+                weight, mode="fan_in", nonlinearity="relu"
+            )
+
+        elif name == "scaled_kaiming_normal":
+            fan = nn.init._calculate_correct_fan(weight, mode="fan_in")
+            fan = fan * self.remain_rate
+            gain = nn.init.calculate_gain("relu")
+            std = gain / math.sqrt(fan)
+            with torch.no_grad():
+                weight.data.normal_(0, std)
+
+        elif name == "kaiming_uniform":
+            nn.init.kaiming_uniform_(
+                weight, mode="fan_in", nonlinearity="relu"
+            )
+        
+        elif name == "xavier_normal":
+            nn.init.xavier_normal_(weight)
+
 
     def set_remain_rate(self, remain_rate):
         self.remain_rate = remain_rate
@@ -120,18 +146,23 @@ class SubnetConv(nn.Conv2d):
     def init_scores(self, mode="kaiming_uniform"):
         if mode == "kaiming_uniform":
             nn.init.kaiming_uniform_(self.scores, a=math.sqrt(5))
+        elif mode == "kaiming_uniform_wide":
+            nn.init.kaiming_uniform_(self.scores, a=math.sqrt(3))
+        elif mode == "kaiming_uniform_narrow":
+            nn.init.kaiming_uniform_(self.scores, a=math.sqrt(10))
         elif mode == "kaiming_normal":
-            nn.init.kaiming_normal_(self.scores)
+            nn.init.kaiming_normal_(self.scores, a=math.sqrt(5))
         elif mode == "xavier_uniform":
-            nn.init.xavier_uniform_(self.scores)
+            nn.init.xavier_uniform_(self.scores, gain=0.4)
         elif mode == "xavier_normal":
-            nn.init.xavier_normal_(self.scores)
+            nn.init.xavier_normal_(self.scores, gain=0.4)
         elif mode == "uniform":
-            nn.init.uniform_(self.scores, a=-1, b=1)
+            nn.init.uniform_(self.scores, a=-0.1, b=0.1)
         elif mode == "normal":
-            nn.init.normal_(self.scores)
+            nn.init.normal_(self.scores, std=0.05)
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
+
 
     def init_weight(self, name=None):
         if name is None:
@@ -151,6 +182,27 @@ class SubnetConv(nn.Conv2d):
             gain = nn.init.calculate_gain("relu")
             std = gain / math.sqrt(fan)
             weight.data = weight.data.sign() * std
+
+        elif name == "kaiming_normal":
+            nn.init.kaiming_uniform_(
+                weight, mode="fan_in", nonlinearity="relu"
+            )
+
+        elif name == "scaled_kaiming_normal":
+            fan = nn.init._calculate_correct_fan(weight, mode="fan_in")
+            fan = fan * self.remain_rate
+            gain = nn.init.calculate_gain("relu")
+            std = gain / math.sqrt(fan)
+            with torch.no_grad():
+                weight.data.normal_(0, std)
+
+        elif name == "kaiming_uniform":
+            nn.init.kaiming_uniform_(
+                weight, mode="fan_in", nonlinearity="relu"
+            )
+        
+        elif name == "xavier_normal":
+            nn.init.xavier_normal_(weight)
 
     def forward(self, x):
         subnet = self.subnet_func.apply(self.clamped_scores, self.remain_rate)

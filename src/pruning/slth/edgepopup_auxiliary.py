@@ -65,7 +65,7 @@ class SubnetLinear(nn.Linear):
         self.initial_aux_loss_weight = 0.001
         # 補助ロスが極小になるepoch数
         self.min_aux_loss_epoch = 100
-        
+
         # 現在のepoch数
         self.current_epoch = 0
 
@@ -74,7 +74,9 @@ class SubnetLinear(nn.Linear):
 
     def get_aux_loss_weight(self):
         # 補助ロスの重みを計算
-        return self.initial_aux_loss_weight * (1 - self.current_epoch / self.min_aux_loss_epoch)
+        return self.initial_aux_loss_weight * (
+            1 - self.current_epoch / self.min_aux_loss_epoch
+        )
 
     @property
     def clamped_scores(self):
@@ -109,7 +111,9 @@ class SubnetLinear(nn.Linear):
     def forward(self, x):
         subnet = self.subnet_func.apply(self.clamped_scores, self.remain_rate)
         w = self.weight * subnet
-        score_reg_loss = self.get_aux_loss_weight() * torch.norm(self.clamped_scores, p=2)
+        score_reg_loss = self.get_aux_loss_weight() * torch.norm(
+            self.clamped_scores, p=2
+        )
         return AddAuxiliaryLoss.apply(
             F.linear(x, w, self.bias), score_reg_loss
         )
@@ -135,8 +139,9 @@ class SubnetConv(nn.Conv2d):
 
     def get_aux_loss_weight(self):
         # 補助ロスの重みを計算
-        return self.initial_aux_loss_weight * (1 - self.current_epoch / self.min_aux_loss_epoch)
-
+        return self.initial_aux_loss_weight * (
+            1 - self.current_epoch / self.min_aux_loss_epoch
+        )
 
     @property
     def clamped_scores(self):
@@ -171,7 +176,9 @@ class SubnetConv(nn.Conv2d):
     def forward(self, x):
         subnet = self.subnet_func.apply(self.clamped_scores, self.remain_rate)
         w = self.weight * subnet
-        score_reg_loss = self.get_aux_loss_weight() * torch.norm(self.clamped_scores, p=2)
+        score_reg_loss = self.get_aux_loss_weight() * torch.norm(
+            self.clamped_scores, p=2
+        )
         return AddAuxiliaryLoss.apply(
             F.conv2d(
                 x,

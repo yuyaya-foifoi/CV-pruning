@@ -2,21 +2,26 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+
 def get_celeba_data_loaders(batch_size):
     # 訓練データ用のトランスフォーム
-    transform_train = transforms.Compose([
-        transforms.CenterCrop(178),  
-        transforms.Resize(128),  
-        transforms.RandomHorizontalFlip(),  
-        transforms.ToTensor(),
-    ])
+    transform_train = transforms.Compose(
+        [
+            transforms.CenterCrop(178),
+            transforms.Resize(128),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ]
+    )
 
     # テストデータ用のトランスフォーム
-    transform_test = transforms.Compose([
-        transforms.CenterCrop(178),  
-        transforms.Resize(128),  
-        transforms.ToTensor(),
-    ])
+    transform_test = transforms.Compose(
+        [
+            transforms.CenterCrop(178),
+            transforms.Resize(128),
+            transforms.ToTensor(),
+        ]
+    )
 
     # CelebA訓練データセット
     train_dataset = torchvision.datasets.CelebA(
@@ -35,14 +40,14 @@ def get_celeba_data_loaders(batch_size):
 
     # データローダー
     train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, 
-        batch_size=batch_size, 
+        dataset=train_dataset,
+        batch_size=batch_size,
         shuffle=True,
     )
 
     test_loader = torch.utils.data.DataLoader(
-        dataset=test_dataset, 
-        batch_size=batch_size, 
+        dataset=test_dataset,
+        batch_size=batch_size,
         shuffle=False,
     )
 
